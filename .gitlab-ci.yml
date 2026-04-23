@@ -1,0 +1,37 @@
+stages:
+  - build
+  - test
+  - deploy
+
+# Crucial: Must use a Windows runner for .NET Framework 4.8 targeting
+default:
+  tags:
+    - windows 
+
+variables:
+  # Keeps the build output clean and speeds up restore
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+build_solution:
+  stage: build
+  script:
+    - dotnet restore ChronoStack.sln
+    - dotnet build ChronoStack.sln --configuration Release --no-restore
+
+run_tests:
+  stage: test
+  script:
+    - dotnet test src/ChronoStack.Tests/ChronoStack.Tests.csproj --configuration Release
+
+publish_nuget:
+  stage: deploy
+  only:
+    - main # Only publish when code merges to the main branch
+  script:
+    - dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release
+    
+    # GitLab automatically provides the CI_JOB_TOKEN and variables for authentication
+    - dotnet nuget add source "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/nuget/index.json" -n GitLab -u gitlab-ci-token -p $env:CI_JOB_TOKEN --store-password-in-clear-text
+    
+    - dotnet nuget push "src\ChronoStack\bin\Release\*.nupkg" --source GitLab --skip-duplicate

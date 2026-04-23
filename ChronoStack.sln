@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9938635E-2FDB-4C83-B3B1-22F45C1F26B2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChronoStack", "src\ChronoStack\ChronoStack.csproj", "{EEA0F2C2-3A33-45E0-B378-731B95662B7C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChronoStack.Demo", "src\ChronoStack.Demo\ChronoStack.Demo.csproj", "{0E8400BB-363E-4435-9752-648DF5D071DD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChronoStack.Tests", "src\ChronoStack.Tests\ChronoStack.Tests.csproj", "{80F5093C-F0CD-4F4D-946E-B17BC05FF17A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EEA0F2C2-3A33-45E0-B378-731B95662B7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EEA0F2C2-3A33-45E0-B378-731B95662B7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EEA0F2C2-3A33-45E0-B378-731B95662B7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EEA0F2C2-3A33-45E0-B378-731B95662B7C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E8400BB-363E-4435-9752-648DF5D071DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E8400BB-363E-4435-9752-648DF5D071DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E8400BB-363E-4435-9752-648DF5D071DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E8400BB-363E-4435-9752-648DF5D071DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{80F5093C-F0CD-4F4D-946E-B17BC05FF17A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{80F5093C-F0CD-4F4D-946E-B17BC05FF17A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{80F5093C-F0CD-4F4D-946E-B17BC05FF17A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{80F5093C-F0CD-4F4D-946E-B17BC05FF17A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{EEA0F2C2-3A33-45E0-B378-731B95662B7C} = {9938635E-2FDB-4C83-B3B1-22F45C1F26B2}
+		{0E8400BB-363E-4435-9752-648DF5D071DD} = {9938635E-2FDB-4C83-B3B1-22F45C1F26B2}
+		{80F5093C-F0CD-4F4D-946E-B17BC05FF17A} = {9938635E-2FDB-4C83-B3B1-22F45C1F26B2}
+	EndGlobalSection
+EndGlobal

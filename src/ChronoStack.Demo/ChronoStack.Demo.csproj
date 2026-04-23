@@ -1,0 +1,27 @@
+<!-- src/ChronoStack.Demo/ChronoStack.Demo.csproj -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Update these to match whatever frameworks you are testing -->
+    <TargetFrameworks>net48;net481;net6.0;net8.0</TargetFrameworks>
+    
+    <!-- This line is the fix! It allows C# 8.0+ features on net48 -->
+    <LangVersion>latest</LangVersion>
+    
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+
+    <!-- Silences the warnings about using v10.x NuGet packages on net6.0 -->
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChronoStack\ChronoStack.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="log4net.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

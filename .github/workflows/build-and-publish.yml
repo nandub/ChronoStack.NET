@@ -1,0 +1,41 @@
+name: ChronoStack CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: # Allows you to run this manually from the GitHub UI
+
+jobs:
+  build-test-pack-publish:
+    # Crucial: We must use a Windows runner to compile net48 and net481
+    runs-on: windows-latest 
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 8.0
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore ChronoStack.sln
+
+    - name: Build Solution
+      run: dotnet build ChronoStack.sln --configuration Release --no-restore
+
+    - name: Run xUnit Tests
+      # If any of your 8 tests fail, the pipeline instantly stops here and alerts you!
+      run: dotnet test src/ChronoStack.Tests/ChronoStack.Tests.csproj --configuration Release --no-build
+
+    - name: Create NuGet Package
+      run: dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release --no-build
+
+    - name: Publish to GitHub Packages
+      # GitHub automatically provides the GITHUB_TOKEN to authenticate
+      run: |
+        dotnet nuget push src\ChronoStack\bin\Release\*.nupkg `
+          --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
+          --api-key ${{ secrets.GITHUB_TOKEN }} `
+          --skip-duplicate
