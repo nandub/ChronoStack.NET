@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## \[1.0.0] - 2026-04-23
+## [1.0.0] - 2026-04-23
 
 ### Added
 
@@ -24,10 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * `UATraceSink` (Universal Automation delegate)
   * `HttpTelemetrySink` (Datadog/Splunk HTTP Intake)
   * `SqlDatabaseSink` (ADO.NET Parameterized SQL)
-  * `Log4NetSink` \& `MicrosoftExtensionsLoggingSink`
+  * `Log4NetSink` & `MicrosoftExtensionsLoggingSink`
 * **Resiliency:** Implemented the `CircuitBreakerSink` decorator to protect background threads from network timeouts (HTTP/SQL).
 * **Security:** Added `PiiRedactor` to automatically mask SSNs and Credit Cards in exception messages.
 * **Observability:** Added memory allocation tracking (`GC.GetAllocatedBytesForCurrentThread`) and W3C Trace Context (OpenTelemetry) extraction.
-* **Cross-Platform:** Implemented PowerShell Unification via the `CHRONOSTACK\_CORRELATION\_ID` environment variable.
+* **Cross-Platform:** Implemented PowerShell Unification via the `CHRONOSTACK_CORRELATION_ID` environment variable.
 * **Testing:** Provided `InMemorySink` for unit testing downstream applications.
 
