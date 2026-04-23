@@ -3,15 +3,16 @@ stages:
   - test
   - deploy
 
-# Crucial: Must use a Windows runner for .NET Framework 4.8 targeting
 default:
   tags:
-    - windows 
+    - windows # Crucial for .NET Framework 4.8 targeting
 
 variables:
-  # Keeps the build output clean and speeds up restore
   DOTNET_NOLOGO: "true"
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  
+  # THE FIX: Tells GitLab to fetch all tags and history so MinVer works!
+  GIT_DEPTH: "0" 
 
 build_solution:
   stage: build
@@ -22,16 +23,17 @@ build_solution:
 run_tests:
   stage: test
   script:
-    - dotnet test src/ChronoStack.Tests/ChronoStack.Tests.csproj --configuration Release
+    - dotnet test src/ChronoStack.Tests/ChronoStack.Tests.csproj --configuration Release --no-build
 
 publish_nuget:
   stage: deploy
   only:
-    - main # Only publish when code merges to the main branch
+    - tags # Only run the publish step when a Git Tag (e.g., v1.0.0) is pushed
   script:
-    - dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release
+    # MinVer automatically detects the tag and names the package perfectly
+    - dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release --no-build
     
-    # GitLab automatically provides the CI_JOB_TOKEN and variables for authentication
+    # GitLab automatically provides these authentication variables
     - dotnet nuget add source "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/nuget/index.json" -n GitLab -u gitlab-ci-token -p $env:CI_JOB_TOKEN --store-password-in-clear-text
     
     - dotnet nuget push "src\ChronoStack\bin\Release\*.nupkg" --source GitLab --skip-duplicate
