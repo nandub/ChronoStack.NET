@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChronoStack.Demo", "src\Chr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChronoStack.Tests", "src\ChronoStack.Tests\ChronoStack.Tests.csproj", "{80F5093C-F0CD-4F4D-946E-B17BC05FF17A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChronoStack.Driver", "src\ChronoStack.Driver\ChronoStack.Driver.csproj", "{4059AD60-D957-4772-85DD-0D0BAFE1EEF3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,10 +34,15 @@ Global
 		{80F5093C-F0CD-4F4D-946E-B17BC05FF17A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{80F5093C-F0CD-4F4D-946E-B17BC05FF17A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{80F5093C-F0CD-4F4D-946E-B17BC05FF17A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4059AD60-D957-4772-85DD-0D0BAFE1EEF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4059AD60-D957-4772-85DD-0D0BAFE1EEF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4059AD60-D957-4772-85DD-0D0BAFE1EEF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4059AD60-D957-4772-85DD-0D0BAFE1EEF3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{EEA0F2C2-3A33-45E0-B378-731B95662B7C} = {9938635E-2FDB-4C83-B3B1-22F45C1F26B2}
 		{0E8400BB-363E-4435-9752-648DF5D071DD} = {9938635E-2FDB-4C83-B3B1-22F45C1F26B2}
 		{80F5093C-F0CD-4F4D-946E-B17BC05FF17A} = {9938635E-2FDB-4C83-B3B1-22F45C1F26B2}
+		{4059AD60-D957-4772-85DD-0D0BAFE1EEF3} = {9938635E-2FDB-4C83-B3B1-22F45C1F26B2}
 	EndGlobalSection
 EndGlobal
