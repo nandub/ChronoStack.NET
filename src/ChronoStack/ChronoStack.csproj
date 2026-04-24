@@ -46,5 +46,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="NLog" Version="6.1.2" />
+    <PackageReference Include="Serilog" Version="4.3.1" />
   </ItemGroup>
 </Project>

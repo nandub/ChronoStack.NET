@@ -95,22 +95,33 @@ namespace ChronoStack
 
     public sealed class EnvironmentInfo
     {
+
         public string MachineName { get; set; } = string.Empty;
         public string ProcessName { get; set; } = string.Empty;
         public int ProcessId { get; set; }
         public int ThreadId { get; set; }
         public string FrameworkDescription { get; set; } = string.Empty;
+        
+        // NEW: Live Metrics captured at the exact moment of the crash
+        public long ProcessRamBytes { get; set; }
+        public int ActiveProcessThreads { get; set; }
+        public TimeSpan ProcessUptime { get; set; }
 
         public static EnvironmentInfo Capture()
         {
-            var p = Process.GetCurrentProcess();
+            using var p = Process.GetCurrentProcess();
             return new EnvironmentInfo
             {
                 MachineName = Environment.MachineName,
                 ProcessName = p.ProcessName,
                 ProcessId = p.Id,
                 ThreadId = Thread.CurrentThread.ManagedThreadId,
-                FrameworkDescription = RuntimeFramework.Value
+                FrameworkDescription = RuntimeFramework.Value,
+                
+                // Capture the exact vitals!
+                ProcessRamBytes = p.WorkingSet64,
+                ActiveProcessThreads = p.Threads.Count,
+                ProcessUptime = DateTime.Now - p.StartTime
             };
         }
 

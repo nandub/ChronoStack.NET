@@ -5,11 +5,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using log4net; // log4net.ILog
+using log4net;
+using Serilog.Events;
+using NLog;
 
 namespace ChronoStack
 {
-        /// <summary>
+    /// <summary>
     /// Sends a JSON payload to an HTTP endpoint.
     /// MUST be wrapped in a CircuitBreakerSink to handle network timeouts safely.
     /// </summary>
@@ -172,9 +174,9 @@ namespace ChronoStack
                 // Map TraceSeverity to MEL LogLevel
                 var logLevel = severity switch
                 {
-                    TraceSeverity.Error => LogLevel.Error,
-                    TraceSeverity.Warning => LogLevel.Warning,
-                    _ => LogLevel.Information
+                    TraceSeverity.Error => Microsoft.Extensions.Logging.LogLevel.Error,
+                    TraceSeverity.Warning => Microsoft.Extensions.Logging.LogLevel.Warning,
+                    _ => Microsoft.Extensions.Logging.LogLevel.Information
                 };
 
                 _logger.Log(logLevel, "{ChronoMessage}", msg);
@@ -255,6 +257,138 @@ namespace ChronoStack
 
                 // The Circuit Breaker catches the exception so it doesn't crash the background dispatcher
             }
+        }
+    }
+
+    /// <summary>
+    /// Pipes ChronoStack telemetry directly into Serilog.
+    /// Preserves full JSON structure using Serilog's '@' destructuring operator.
+    /// </summary>
+    public sealed class SerilogSink : ITraceSink
+    {
+        private readonly Serilog.ILogger _logger;
+
+        public SerilogSink(Serilog.ILogger logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        public void Write(TraceSeverity severity, object report, TracerOptions options)
+        {
+            try
+            {
+                var level = severity switch
+                {
+                    TraceSeverity.Error => LogEventLevel.Error,
+                    TraceSeverity.Warning => LogEventLevel.Warning,
+                    _ => LogEventLevel.Information
+                };
+
+                // The '@' tells Serilog to serialize the entire object into its structured properties!
+                _logger.Write(level, "ChronoStack Error: {@ChronoReport}", report);
+            }
+            catch { /* Never crash the dispatcher */ }
+        }
+    }
+
+    /// <summary>
+    /// Pipes ChronoStack telemetry into NLog.
+    /// </summary>
+    public sealed class NLogSink : ITraceSink
+    {
+        private readonly NLog.ILogger _logger;
+
+        public NLogSink(NLog.ILogger logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        public void Write(TraceSeverity severity, object report, TracerOptions options)
+        {
+            try
+            {
+                var level = severity switch
+                {
+                    TraceSeverity.Error => NLog.LogLevel.Error,
+                    TraceSeverity.Warning => NLog.LogLevel.Warn,
+                    _ => NLog.LogLevel.Info
+                };
+
+                // For NLog, we serialize it to JSON first to ensure it stays structured
+                var json = JsonSerializerShim.Serialize(report, options.JsonCompact);
+                _logger.Log(level, $"ChronoStack Error: {json}");
+            }
+            catch { }
+        }
+    }
+
+    /// <summary>
+    /// Exports telemetry directly to an OpenTelemetry (OTel) Collector using the OTLP/HTTP protocol.
+    /// MUST be wrapped in a CircuitBreakerSink!
+    /// </summary>
+    public sealed class OtlpHttpLogSink : ITraceSink
+    {
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        private readonly string _otlpEndpoint;
+        private readonly string _serviceName;
+
+        /// <param name="endpointUrl">e.g., http://localhost:4318/v1/logs</param>
+        /// <param name="serviceName">The name of the service emitting the telemetry (e.g., "MyWebApp").</param>
+        public OtlpHttpLogSink(string endpointUrl, string serviceName)
+        {
+            _otlpEndpoint = endpointUrl;
+            _serviceName = serviceName;
+        }
+
+        public void Write(TraceSeverity severity, object report, TracerOptions options)
+        {
+            var traceId = report is TraceErrorReport tr ? tr.TraceId : null;
+            var jsonBody = JsonSerializerShim.Serialize(report, options.JsonCompact);
+
+            // Construct the official OTLP JSON Log Data Model
+            var otlpPayload = $@"
+            {{
+              ""resourceLogs"": [
+                {{
+                  ""resource"": {{
+                    ""attributes"": [
+                      {{ ""key"": ""service.name"", ""value"": {{ ""stringValue"": ""{_serviceName}"" }} }}
+                    ]
+                  }},
+                  ""scopeLogs"": [
+                    {{
+                      ""logRecords"": [
+                        {{
+                          ""timeUnixNano"": ""{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000000}"",
+                          ""severityText"": ""{severity}"",
+                          ""traceId"": ""{(traceId ?? "")}"",
+                          ""body"": {{ ""stringValue"": {EscapeJsonString(jsonBody)} }}
+                        }}
+                      ]
+                    }}
+                  ]
+                }}
+              ]
+            }}";
+
+            var content = new StringContent(otlpPayload, Encoding.UTF8, "application/json");
+            
+            // Synchronous call so the CircuitBreaker can catch timeouts!
+            var response = _httpClient.PostAsync(_otlpEndpoint, content).GetAwaiter().GetResult();
+            response.EnsureSuccessStatusCode();
+        }
+
+        // Helper to safely escape our ChronoStack JSON so it fits inside the OTLP string value
+        private static string EscapeJsonString(string rawJson)
+        {
+#if NET6_0_OR_GREATER
+            // 100% Native AOT Compatible!
+            var ctx = ChronoStackJsonContext.Get(compact: true);
+            return System.Text.Json.JsonSerializer.Serialize(rawJson, ctx.String);
+#else
+            // Legacy .NET Framework fallback
+            return Newtonsoft.Json.JsonConvert.ToString(rawJson);
+#endif
         }
     }
 }

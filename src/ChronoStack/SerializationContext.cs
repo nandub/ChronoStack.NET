@@ -33,6 +33,7 @@ namespace ChronoStack
     [JsonSerializable(typeof(StackFrameInfo))]
     [JsonSerializable(typeof(TimedFrame))]
     [JsonSerializable(typeof(Dictionary<string, string>))]
+    [JsonSerializable(typeof(string))]
     internal partial class ChronoStackJsonContext : JsonSerializerContext
     {
         private static readonly JsonSerializerOptions CompactOptions = new JsonSerializerOptions 
