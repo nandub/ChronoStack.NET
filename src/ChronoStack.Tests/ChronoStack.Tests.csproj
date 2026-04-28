@@ -1,12 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- 1. For Local Devs: Only test the newest modern framework and legacy framework -->
+    <TargetFrameworks Condition="'$(CI)' != 'true'">net48;net481;net8.0</TargetFrameworks>
+    
+    <!-- 2. For the CI/CD Server: Test absolutely everything -->
+    <TargetFrameworks Condition="'$(CI)' == 'true'">net48;net481;net6.0;net8.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+
+    <!-- Silences the warnings about using v10.x NuGet packages on net6.0 -->
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
   </PropertyGroup>
 
   <ItemGroup>

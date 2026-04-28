@@ -170,7 +170,6 @@ namespace ChronoStack.Tests
                 {
                     tracer.InvokeScope("MemoryHogScope", () => 
                     {
-                        // Allocate roughly 1MB of memory
                         var dummyData = new byte[1024 * 1024]; 
                         throw new OutOfMemoryException("Memory Test");
                     });
@@ -181,9 +180,14 @@ namespace ChronoStack.Tests
             var report = (TraceErrorReport)sink.CapturedReports.First();
             var memScope = report.TimedStack.First(s => s.Name == "MemoryHogScope");
             
+#if NET6_0_OR_GREATER
+            // Modern .NET tracks memory perfectly
             Assert.NotNull(memScope.AllocatedBytes);
-            // It should be at least 1MB (1,048,576 bytes)
             Assert.True(memScope.AllocatedBytes >= 1048576, $"Allocated bytes was only {memScope.AllocatedBytes}");
+#else
+            // Legacy .NET Framework doesn't support thread memory tracking, so we expect null!
+            Assert.Null(memScope.AllocatedBytes);
+#endif
         }
 
         [Fact]
