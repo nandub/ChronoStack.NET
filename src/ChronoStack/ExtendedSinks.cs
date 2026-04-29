@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -376,8 +377,8 @@ namespace ChronoStack
             // Synchronous call so the CircuitBreaker can catch timeouts!
             var response = _httpClient.PostAsync(_otlpEndpoint, content).GetAwaiter().GetResult();
             response.EnsureSuccessStatusCode();
-        }
-
+        }	
+    
         // Helper to safely escape our ChronoStack JSON so it fits inside the OTLP string value
         private static string EscapeJsonString(string rawJson)
         {
@@ -389,6 +390,64 @@ namespace ChronoStack
             // Legacy .NET Framework fallback
             return Newtonsoft.Json.JsonConvert.ToString(rawJson);
 #endif
+        }
+    }
+
+    /// <summary>
+    /// Writes telemetry to a local or remote Linux Syslog daemon (e.g., rsyslog) via UDP.
+    /// Acts as the Linux equivalent to the Windows EventLogTraceSink.
+    /// </summary>
+    public sealed class SyslogTraceSink : ITraceSink, IDisposable
+    {
+        private readonly UdpClient _udpClient;
+        private readonly string _appName;
+        private readonly string _hostName;
+
+        /// <param name="appName">The name of your app (appears in the syslog file)</param>
+        /// <param name="host">The syslog server (defaults to localhost/127.0.0.1)</param>
+        /// <param name="port">The syslog UDP port (defaults to standard 514)</param>
+        public SyslogTraceSink(string appName = "ChronoStack", string host = "127.0.0.1", int port = 514)
+        {
+            _appName = appName;
+            _hostName = Environment.MachineName;
+            _udpClient = new UdpClient(host, port);
+        }
+
+        public void Write(TraceSeverity severity, object report, TracerOptions options)
+        {
+            try
+            {
+                // Syslog Priority Calculation: Facility (1 = User-Level) * 8 + Severity
+                // Syslog Severities: 3 = Error, 4 = Warning, 6 = Informational
+                int syslogSeverity = severity switch
+                {
+                    TraceSeverity.Error => 3,
+                    TraceSeverity.Warning => 4,
+                    _ => 6
+                };
+                int priority = (1 * 8) + syslogSeverity;
+
+                // Format: <Priority>Month Day Time Hostname AppName: Message
+                var timestamp = DateTime.Now.ToString("MMM dd HH:mm:ss");
+                
+                var msg = report is TraceErrorReport tr 
+                    ? $"[ID: {tr.CorrelationId}] {tr.Error.ExceptionType}: {tr.Error.Message}" 
+                    : report.ToString();
+
+                // Build the RFC 3164 compliant Syslog message
+                var syslogMessage = $"<{priority}>{timestamp} {_hostName} {_appName}: {msg}";
+                
+                var bytes = Encoding.UTF8.GetBytes(syslogMessage);
+                
+                // UDP is connectionless and fire-and-forget. It won't block the thread!
+                _udpClient.Send(bytes, bytes.Length);
+            }
+            catch { /* Graceful degradation if the local syslog daemon is down */ }
+        }
+
+        public void Dispose()
+        {
+            _udpClient?.Dispose();
         }
     }
 }

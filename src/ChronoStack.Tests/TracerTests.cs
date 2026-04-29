@@ -211,6 +211,46 @@ namespace ChronoStack.Tests
             Assert.Single(memorySink.CapturedReports);
         }
 
+        [Fact]
+        public void EnvironmentInfo_CapturesLiveHostMetrics()
+        {
+            // Arrange
+            var sink = new InMemorySink();
+            var options = new TracerOptions { IncludeEnvironmentInfo = true };
+            
+            // Act
+            using (var tracer = Tracer.Create(new[] { sink }, options))
+            {
+                tracer.Run(() => throw new Exception("Testing Live Metrics"));
+            }
+
+            // Assert
+            var report = (ErrorReport)sink.CapturedReports.First();
+            Assert.NotNull(report.Environment);
+            
+            // Prove that the live metrics were actively captured from the host OS
+            Assert.True(report.Environment.ProcessRamBytes > 0, "Process RAM should be greater than 0");
+            Assert.True(report.Environment.ActiveProcessThreads > 0, "Active Threads should be greater than 0");
+            Assert.True(report.Environment.ProcessUptime.TotalMilliseconds > 0, "Process Uptime should be greater than 0");
+        }
+
+        [Fact]
+        public void JsonSerializerShim_SerializesEnvelopeCorrectlyForAOT()
+        {
+            // Arrange
+            var dummyReport = new ErrorReport { Message = "AOT JSON Test" };
+            
+            // Act
+            // Call the Shim directly to test our Source Generator / Newtonsoft fallback logic
+            var json = JsonSerializerShim.SerializeEnvelope("Error", dummyReport, compact: true);
+
+            // Assert
+            Assert.NotNull(json);
+            Assert.Contains("\"severity\":\"Error\"", json);
+            Assert.Contains("\"payload\":{", json);
+            Assert.Contains("AOT JSON Test", json);
+        }
+
         // A mock sink that simulates a completely broken custom sink (e.g. NullReferenceException)
         private class MockHostileSink : ITraceSink
         {

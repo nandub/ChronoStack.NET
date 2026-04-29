@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -20,8 +21,26 @@ namespace ChronoStack.Driver
             var targetArgs = string.Join(" ", args.Skip(1));
             int exitCode = 0;
 
-            // 1. Configure Sinks (You can add SqlDatabaseSink, JsonlTraceSink, etc. here)
-            using (var tracer = Tracer.CreateDefault()) 
+            // 1. Configure OS-Aware Enterprise Sinks
+            var sinks = new List<ITraceSink> { new ConsoleTraceSink() };
+#if NET6_0_OR_GREATER
+            // 🌟 Dynamically choose EventLog for Windows and Syslog for Linux/Mac!
+            if (OperatingSystem.IsWindows())
+            {
+                sinks.Add(new EventLogTraceSink("Application", "ChronoDriver"));
+            }
+            else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+            {
+                sinks.Add(new SyslogTraceSink(appName: "ChronoDriver"));
+            }
+#else
+            // Legacy .NET Framework ONLY runs on Windows, so we safely hardcode the EventLog
+            sinks.Add(new EventLogTraceSink("Application", "ChronoDriver"));
+#endif
+
+
+            // 2. Run the Driver
+            using (var tracer = Tracer.Create(sinks)) 
             {
                 var result = tracer.RunTimed(() =>
                 {
@@ -60,7 +79,7 @@ namespace ChronoStack.Driver
                 CreateNoWindow = true
             };
 
-            // OPTIONAL: Pass the Correlation ID down to the child process just in case!
+            // Pass the Correlation ID down to the child process just in case!
             var currentSessionId = Environment.GetEnvironmentVariable("CHRONOSTACK_CORRELATION_ID");
             if (!string.IsNullOrEmpty(currentSessionId))
             {

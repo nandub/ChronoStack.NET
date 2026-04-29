@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -14,6 +15,7 @@ internal static class Program
         Demo_TimedFrames_ExplicitCatch();
         Demo_TimedFrames_InvokeScope();
         Demo_JsonlSink();
+        Demo_NativeOsLogging(); // <-- NEW OS Demo
         
         Console.WriteLine("\n--- Extended Sinks ---");
         Demo_HttpTelemetrySink();
@@ -24,17 +26,17 @@ internal static class Program
         Demo_EnterpriseFeatures();
         Demo_CircuitBreaker();
         Demo_UATraceSink();
-		Demo_PowerShellUnification();
+        Demo_PowerShellUnification(); 
     }
 
+    // ... [Demo 1 through 4 remain exactly the same] ...
     private static void Demo_NoInstrumentation()
     {
         Console.WriteLine("\n1) No-instrumentation Mode:");
         using (var tracer = Tracer.CreateDefault())
         {
             var result = tracer.Run(() => File.ReadAllText(@"C:\MissingFile.txt"));
-            if (!result.Success)
-                Console.WriteLine(((ErrorReport)result.Report!).ToPrettyString());
+            if (!result.Success) Console.WriteLine(((ErrorReport)result.Report!).ToPrettyString());
         }
     }
 
@@ -48,15 +50,10 @@ internal static class Program
                 using (var scope = tracer.Scope("Database.Connect"))
                 {
                     try { throw new TimeoutException("Connection dropped."); }
-                    catch
-                    {
-                        scope.SnapshotOnError();
-                        throw;
-                    }
+                    catch { scope.SnapshotOnError(); throw; }
                 }
             });
-            if (!result.Success)
-                Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
+            if (!result.Success) Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
         }
     }
 
@@ -72,8 +69,7 @@ internal static class Program
                     tracer.InvokeScope("HTTP.Get", () => throw new InvalidOperationException("500 Internal Server Error"));
                 });
             });
-            if (!result.Success)
-                Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
+            if (!result.Success) Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
         }
     }
 
@@ -84,15 +80,41 @@ internal static class Program
         
         using (var tracer = Tracer.Create(new ITraceSink[] { new JsonlTraceSink(path), new ConsoleTraceSink() }))
         {
+            var result = tracer.RunTimed(() => tracer.InvokeScope("Data.Parse", () => int.Parse("Not a number")));
+            if (!result.Success) Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
+            Console.WriteLine($"\nWrote full JSONL payload to: {path}");
+        }
+    }
+
+    private static void Demo_NativeOsLogging()
+    {
+        Console.WriteLine("\n4b) Native OS Logging (EventLog / Syslog):");
+        var sinks = new List<ITraceSink> { new ConsoleTraceSink() };
+
+#if NET6_0_OR_GREATER
+        if (OperatingSystem.IsWindows())
+        {
+            Console.WriteLine("    Detected Windows! Wiring up Windows Event Log Sink...");
+            sinks.Add(new EventLogTraceSink("Application", "ChronoStackDemo", 42042));
+        }
+        else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+        {
+            Console.WriteLine("    Detected Linux/Mac! Wiring up Syslog UDP Sink...");
+            sinks.Add(new SyslogTraceSink(appName: "ChronoStackDemo"));
+        }
+#else
+        Console.WriteLine("    Detected Legacy .NET Framework! Wiring up Windows Event Log Sink...");
+        sinks.Add(new EventLogTraceSink("Application", "ChronoStackDemo", 42042));
+#endif
+
+        using (var tracer = Tracer.Create(sinks))
+        {
             var result = tracer.RunTimed(() => 
             {
-                tracer.InvokeScope("Data.Parse", () => int.Parse("Not a number"));
+                tracer.InvokeScope("OS.NativeLog", () => throw new UnauthorizedAccessException("System resource access denied."));
             });
             
-            if (!result.Success)
-                Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
-                
-            Console.WriteLine($"\nWrote full JSONL payload to: {path}");
+            if (!result.Success) Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
         }
     }
 
@@ -109,15 +131,13 @@ internal static class Program
                 tracer.InvokeScope("CloudSync.Upload", () => throw new UnauthorizedAccessException("Invalid API Key for Cloud Sync."));
             });
 
-            if (!result.Success)
-                Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
+            if (!result.Success) Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
         }
     }
 
     private static void Demo_Log4NetSink_Basic()
     {
         Console.WriteLine("\n6a) log4net Sink Demo (BasicConfigurator):");
-        
         var assembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
         var repo = log4net.LogManager.GetRepository(assembly);
         
@@ -127,45 +147,28 @@ internal static class Program
         
         using (var tracer = Tracer.Create(new ITraceSink[] { new Log4NetSink(log) }))
         {
-            tracer.RunTimed(() =>
-            {
-                tracer.InvokeScope("Auth.Login", () => throw new UnauthorizedAccessException("Basic Configurator: Login failed."));
-            });
+            tracer.RunTimed(() => tracer.InvokeScope("Auth.Login", () => throw new UnauthorizedAccessException("Basic Configurator: Login failed.")));
         }
     }
 
     private static void Demo_Log4NetSink_Xml()
     {
         Console.WriteLine("\n6b) log4net Sink Demo (XML Configured):");
-        
         var assembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
         var repo = log4net.LogManager.GetRepository(assembly);
-
         var basePath = AppDomain.CurrentDomain.BaseDirectory;
         var configFile = new FileInfo(Path.Combine(basePath, "log4net.config"));
 
         log4net.LogManager.ResetConfiguration(assembly);
         
-        if (configFile.Exists)
-        {
-            log4net.Config.XmlConfigurator.Configure(repo, configFile);
-        }
-        else
-        {
-            Console.WriteLine($"WARNING: log4net.config not found at {configFile.FullName}");
-            return;
-        }
+        if (configFile.Exists) log4net.Config.XmlConfigurator.Configure(repo, configFile);
+        else { Console.WriteLine($"WARNING: log4net.config not found at {configFile.FullName}"); return; }
         
         var log = log4net.LogManager.GetLogger(typeof(Program));
-        
         using (var tracer = Tracer.Create(new ITraceSink[] { new Log4NetSink(log) }))
         {
-            tracer.RunTimed(() =>
-            {
-                tracer.InvokeScope("PaymentProcessor.Charge", () => throw new InvalidOperationException("XML Configurator: Insufficient funds."));
-            });
+            tracer.RunTimed(() => tracer.InvokeScope("PaymentProcessor.Charge", () => throw new InvalidOperationException("XML Configurator: Insufficient funds.")));
         }
-        
         Console.WriteLine("log4net successfully processed the error using XML (check your console and the /logs folder).");
     }
 
@@ -173,7 +176,6 @@ internal static class Program
     {
         Console.WriteLine("\n7) Enterprise Features (PII Redaction, Memory Tracking, OTel):");
         var activity = new System.Diagnostics.Activity("Incoming_HttpRequest").Start();
-
         var options = new TracerOptions { MessageRedactor = PiiRedactor.Redact };
         
         using (var tracer = Tracer.Create(new ITraceSink[] { new ConsoleTraceSink() }, options))
@@ -190,8 +192,7 @@ internal static class Program
                 });
             });
 
-            if (!result.Success)
-                Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
+            if (!result.Success) Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
         }
         activity.Stop();
     }
@@ -199,7 +200,6 @@ internal static class Program
     private static void Demo_CircuitBreaker()
     {
         Console.WriteLine("\n8) Circuit Breaker Sink Demo:");
-        
         var fragileSink = new MockFragileSink();
         var breakerSink = new CircuitBreakerSink(fragileSink, failureThreshold: 3, cooldown: TimeSpan.FromSeconds(2));
         
@@ -214,54 +214,30 @@ internal static class Program
         }
     }
 
-    private class MockFragileSink : ITraceSink
-    {
-        public void Write(TraceSeverity severity, object report, TracerOptions options)
-        {
-            Console.WriteLine("    [MockFragileSink] Attempting to write over the network... FAILED!");
-            throw new TimeoutException("The network path was not found.");
-        }
-    }
-
     private static void Demo_UATraceSink()
     {
-        Console.WriteLine("\n10) Universal Automation (UA) Sink Demo:");
-        
-        // 1. Simulate a logging function provided by a host automation platform.
-        // In the real world, this could be a named pipe, a WebSocket, or a specific UA SDK method.
+        Console.WriteLine("\n9) Universal Automation (UA) Sink Demo:");
         Action<string> uaLogDelegate = (jsonPayload) => 
         {
             Console.WriteLine($"[UA_INGEST] Successfully intercepted compact JSON payload:");
             Console.WriteLine(jsonPayload);
         };
 
-        // 2. Wire up the sink by passing in the delegate
         using (var tracer = Tracer.Create(new ITraceSink[] { new UATraceSink(uaLogDelegate) }))
         {
-            tracer.RunTimed(() =>
-            {
-                tracer.InvokeScope("UA.Job.Run", () => 
-                {
-                    tracer.InvokeScope("UA.Step.Initialize", () => 
-                        throw new InvalidOperationException("Host environment missing required UA variables."));
-                });
-            });
+            tracer.RunTimed(() => tracer.InvokeScope("UA.Job.Run", () => tracer.InvokeScope("UA.Step.Initialize", () => throw new InvalidOperationException("Host environment missing required UA variables."))));
         }
     }
-	
-	private static void Demo_PowerShellUnification()
+
+    private static void Demo_PowerShellUnification()
     {
-        Console.WriteLine("\n11) PowerShell + C# Unification Demo:");
-        
-        // 1. Simulate the PowerShell script setting the environment variable
+        Console.WriteLine("\n10) PowerShell + C# Unification Demo:");
         var psCorrelationId = Guid.NewGuid();
         Environment.SetEnvironmentVariable("CHRONOSTACK_CORRELATION_ID", psCorrelationId.ToString());
         
         Console.WriteLine($"[PowerShell] Generated Master ID: {psCorrelationId}");
         Console.WriteLine($"[PowerShell] Calling C# Executable...\n");
         
-        // 2. The C# app spins up and creates a tracer...
-        // Because of our TracerOptions constructor, it automatically detects the ID!
         using (var tracer = Tracer.CreateDefault())
         {
             var result = tracer.RunTimed(() =>
@@ -270,11 +246,17 @@ internal static class Program
                 tracer.InvokeScope("CSharp.DataProcessing", () => throw new Exception("C# executable crashed!"));
             });
 
-            if (!result.Success)
-                Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
+            if (!result.Success) Console.WriteLine(((TraceErrorReport)result.Report!).ToPrettyString());
         }
-
-        // 3. Clean up the simulation
         Environment.SetEnvironmentVariable("CHRONOSTACK_CORRELATION_ID", null);
+    }
+
+    private class MockFragileSink : ITraceSink
+    {
+        public void Write(TraceSeverity severity, object report, TracerOptions options)
+        {
+            Console.WriteLine("    [MockFragileSink] Attempting to write over the network... FAILED!");
+            throw new TimeoutException("The network path was not found.");
+        }
     }
 }
