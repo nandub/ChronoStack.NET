@@ -73,9 +73,15 @@ $dotnetArgs += "-c", $Configuration
 
 # Add Framework (if specified)
 if (-not [string]::IsNullOrWhiteSpace($Framework)) {
-    # MUST be strictly lowercase!
     $dotnetArgs += "--framework", $Framework
 }
+
+# --- NEW: Add Test-Specific Arguments ---
+if ($Action -eq 'Test') {
+    # This tells the test runner to print the name and result of every single test!
+    $dotnetArgs += "--logger", "console;verbosity=detailed"
+}
+# ----------------------------------------
 
 # 3. Add Publish-Specific Arguments
 if ($Action -eq 'Publish') {
