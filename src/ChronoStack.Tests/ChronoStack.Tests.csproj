@@ -5,7 +5,7 @@
     <TargetFrameworks Condition="'$(CI)' != 'true'">net48;net481;net8.0</TargetFrameworks>
     
     <!-- 2. For the CI/CD Server: Test absolutely everything -->
-    <TargetFrameworks Condition="'$(CI)' == 'true'">net48;net481;net6.0;net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(CI)' == 'true'">net48;net481;net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
@@ -15,9 +15,6 @@
 
     <!-- Silences the warnings about using v10.x NuGet packages on net6.0 -->
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
-
-    <!-- Silences the EOL warning for net6.0 -->
-    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
