@@ -34,7 +34,7 @@
   <!-- Dependencies for Modern .NET (6.0, 8.0, etc.) -->
   <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp'">
     <PackageReference Include="System.Text.Json" Version="10.0.3" />
-    <PackageReference Include="System.Diagnostics.EventLog" Version="9.0.0" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="9.0.13" />
   </ItemGroup>
 
   <!-- Dependencies for old .NET Framework (4.7.2, 4.8, etc.) -->

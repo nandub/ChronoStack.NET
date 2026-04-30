@@ -13,6 +13,9 @@
 
     <!-- Silences the warnings about using v10.x NuGet packages on net6.0 -->
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+
+    <!-- Silences the EOL warning for net6.0 -->
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
