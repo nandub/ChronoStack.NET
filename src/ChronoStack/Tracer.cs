@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace ChronoStack
 {
@@ -171,6 +172,60 @@ namespace ChronoStack
         }
 
         /// <summary>
+        /// Asynchronously runs an action and generates an ErrorReport on failure.
+        /// </summary>
+        public async Task<TracerRunResult> RunAsync(Func<Task> action, TracerOptions? overrideOptions = null)
+        {
+            if (action == null) throw new ArgumentNullException(nameof(action));
+            var opts = (overrideOptions ?? Options).Clone();
+            _currentSession.Value = null;
+
+            try
+            {
+                await action().ConfigureAwait(false);
+                return new TracerRunResult { Success = true };
+            }
+            catch (Exception ex)
+            {
+                var report = BuildErrorReport(ex, opts);
+                WriteToSinks(TraceSeverity.Error, report, opts);
+                return new TracerRunResult { Success = false, Exception = ex, Report = report };
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously runs an action in a fresh timed session with a correlation id.
+        /// </summary>
+        public async Task<TracerRunResult> RunTimedAsync(Func<Task> action, TracerOptions? overrideOptions = null)
+        {
+            if (action == null) throw new ArgumentNullException(nameof(action));
+            var opts = (overrideOptions ?? Options).Clone();
+            var correlationId = opts.FixedCorrelationId ?? Guid.NewGuid();
+
+            var session = new TraceSession(correlationId);
+            _currentSession.Value = session;
+
+            try
+            {
+                await action().ConfigureAwait(false);
+                return new TracerRunResult { Success = true, CorrelationId = correlationId };
+            }
+            catch (Exception ex)
+            {
+                if (session.LastTimedStackSnapshot == null || session.LastTimedStackSnapshot.Count == 0)
+                    CaptureSnapshot(session);
+
+                var report = BuildTraceErrorReport(ex, session, opts);
+                WriteToSinks(TraceSeverity.Error, report, opts);
+                return new TracerRunResult { Success = false, Exception = ex, Report = report, CorrelationId = correlationId };
+            }
+            finally
+            {
+                _currentSession.Value = null;
+            }
+        }
+
+        /// <summary>
         /// Ergonomic wrapper that creates a scope, runs the action, and automatically snapshots on error.
         /// </summary>
         public void InvokeScope(string name, Action action)
@@ -178,6 +233,25 @@ namespace ChronoStack
             using (var scope = Scope(name))
             {
                 try { action(); }
+                catch
+                {
+                    scope.SnapshotOnError();
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Ergonomic wrapper for asynchronous operations that automatically snapshots on error.
+        /// </summary>
+        public async Task InvokeScopeAsync(string name, Func<Task> action)
+        {
+            using (var scope = Scope(name))
+            {
+                try
+                {
+                    await action().ConfigureAwait(false);
+                }
                 catch
                 {
                     scope.SnapshotOnError();

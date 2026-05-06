@@ -95,17 +95,21 @@ namespace ChronoStack
 
     public sealed class EnvironmentInfo
     {
-
         public string MachineName { get; set; } = string.Empty;
         public string ProcessName { get; set; } = string.Empty;
         public int ProcessId { get; set; }
         public int ThreadId { get; set; }
         public string FrameworkDescription { get; set; } = string.Empty;
         
-        // NEW: Live Metrics captured at the exact moment of the crash
         public long ProcessRamBytes { get; set; }
         public int ActiveProcessThreads { get; set; }
         public TimeSpan ProcessUptime { get; set; }
+
+        // NEW: Advanced Garbage Collector Diagnostics
+        public int GcGen0Collections { get; set; }
+        public int GcGen1Collections { get; set; }
+        public int GcGen2Collections { get; set; }
+        public long TotalAvailableMemoryBytes { get; set; }
 
         public static EnvironmentInfo Capture()
         {
@@ -118,10 +122,17 @@ namespace ChronoStack
                 ThreadId = Thread.CurrentThread.ManagedThreadId,
                 FrameworkDescription = RuntimeFramework.Value,
                 
-                // Capture the exact vitals!
                 ProcessRamBytes = p.WorkingSet64,
                 ActiveProcessThreads = p.Threads.Count,
-                ProcessUptime = DateTime.Now - p.StartTime
+                ProcessUptime = DateTime.Now - p.StartTime,
+
+                // Capture exact GC State at the millisecond of the crash
+                GcGen0Collections = GC.CollectionCount(0),
+                GcGen1Collections = GC.CollectionCount(1),
+                GcGen2Collections = GC.CollectionCount(2),
+#if NET6_0_OR_GREATER
+                TotalAvailableMemoryBytes = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes
+#endif
             };
         }
 

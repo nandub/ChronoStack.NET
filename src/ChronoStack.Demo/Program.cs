@@ -176,7 +176,8 @@ internal static class Program
     {
         Console.WriteLine("\n7) Enterprise Features (PII Redaction, Memory Tracking, OTel):");
         var activity = new System.Diagnostics.Activity("Incoming_HttpRequest").Start();
-        var options = new TracerOptions { MessageRedactor = PiiRedactor.Redact };
+        // Use the new structured Redaction Policy!
+        var options = new TracerOptions { MessageRedactor = RedactionPolicy.DefaultPiiPolicy().Redact };
         
         using (var tracer = Tracer.Create(new ITraceSink[] { new ConsoleTraceSink() }, options))
         {

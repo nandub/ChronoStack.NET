@@ -41,7 +41,7 @@ namespace ChronoStack.Tests
         {
             // Arrange
             var sink = new InMemorySink();
-            var options = new TracerOptions { MessageRedactor = PiiRedactor.Redact };
+            var options = new TracerOptions { MessageRedactor = RedactionPolicy.DefaultPiiPolicy().Redact };
             
             // Act
             using (var tracer = Tracer.Create(new[] { sink }, options))
