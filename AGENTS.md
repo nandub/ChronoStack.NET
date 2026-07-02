@@ -48,6 +48,7 @@ After package metadata or release-surface changes, verify the NuGet artifact:
 ```powershell
 dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release --no-build
 pwsh -File ./scripts/Verify-ChronoStackPackage.ps1
+pwsh -File ./scripts/Test-ChronoStackPackageInstall.ps1
 ```
 
 If a full multi-target test run is too slow or blocked, call that out and run the narrowest relevant target.

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
@@ -375,43 +376,48 @@ namespace ChronoStack
             var traceId = report is TraceErrorReport tr ? tr.TraceId : null;
             var jsonBody = JsonSerializerShim.Serialize(report, options.JsonCompact);
 
-            // Construct the official OTLP JSON Log Data Model.
-            return $@"
-            {{
-              ""resourceLogs"": [
-                {{
-                  ""resource"": {{
-                    ""attributes"": [
-                      {{ ""key"": ""service.name"", ""value"": {{ ""stringValue"": {EscapeJsonString(_serviceName)} }} }}
-                    ]
-                  }},
-                  ""scopeLogs"": [
-                    {{
-                      ""logRecords"": [
-                        {{
-                          ""timeUnixNano"": ""{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000000}"",
-                          ""severityText"": ""{severity}"",
-                          ""traceId"": {EscapeJsonString(traceId ?? "")},
-                          ""body"": {{ ""stringValue"": {EscapeJsonString(jsonBody)} }}
-                        }}
-                      ]
-                    }}
-                  ]
-                }}
-              ]
-            }}";
-        }
-    
-        // Helper to safely escape our ChronoStack JSON so it fits inside the OTLP string value
-        private static string EscapeJsonString(string rawJson)
-        {
+            var payload = new OtlpLogsPayload
+            {
+                resourceLogs = new[]
+                {
+                    new OtlpResourceLog
+                    {
+                        resource = new OtlpResource
+                        {
+                            attributes = new[]
+                            {
+                                new OtlpAttribute
+                                {
+                                    key = "service.name",
+                                    value = new OtlpAttributeValue { stringValue = _serviceName }
+                                }
+                            }.ToList()
+                        },
+                        scopeLogs = new[]
+                        {
+                            new OtlpScopeLog
+                            {
+                                logRecords = new[]
+                                {
+                                    new OtlpLogRecord
+                                    {
+                                        timeUnixNano = (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000000).ToString(),
+                                        severityText = severity.ToString(),
+                                        traceId = traceId ?? string.Empty,
+                                        body = new OtlpBody { stringValue = jsonBody }
+                                    }
+                                }.ToList()
+                            }
+                        }.ToList()
+                    }
+                }.ToList()
+            };
+
 #if NET6_0_OR_GREATER
-            // 100% Native AOT Compatible!
             var ctx = ChronoStackJsonContext.Get(compact: true);
-            return System.Text.Json.JsonSerializer.Serialize(rawJson, ctx.String);
+            return System.Text.Json.JsonSerializer.Serialize(payload, ctx.OtlpLogsPayload);
 #else
-            // Legacy .NET Framework fallback
-            return Newtonsoft.Json.JsonConvert.ToString(rawJson);
+            return Newtonsoft.Json.JsonConvert.SerializeObject(payload);
 #endif
         }
     }

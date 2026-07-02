@@ -19,6 +19,51 @@ namespace ChronoStack
         public T? payload { get; set; }
     }
 
+    internal sealed class OtlpLogsPayload
+    {
+        public List<OtlpResourceLog> resourceLogs { get; set; } = new List<OtlpResourceLog>();
+    }
+
+    internal sealed class OtlpResourceLog
+    {
+        public OtlpResource resource { get; set; } = new OtlpResource();
+        public List<OtlpScopeLog> scopeLogs { get; set; } = new List<OtlpScopeLog>();
+    }
+
+    internal sealed class OtlpResource
+    {
+        public List<OtlpAttribute> attributes { get; set; } = new List<OtlpAttribute>();
+    }
+
+    internal sealed class OtlpAttribute
+    {
+        public string key { get; set; } = string.Empty;
+        public OtlpAttributeValue value { get; set; } = new OtlpAttributeValue();
+    }
+
+    internal sealed class OtlpAttributeValue
+    {
+        public string stringValue { get; set; } = string.Empty;
+    }
+
+    internal sealed class OtlpScopeLog
+    {
+        public List<OtlpLogRecord> logRecords { get; set; } = new List<OtlpLogRecord>();
+    }
+
+    internal sealed class OtlpLogRecord
+    {
+        public string timeUnixNano { get; set; } = string.Empty;
+        public string severityText { get; set; } = string.Empty;
+        public string traceId { get; set; } = string.Empty;
+        public OtlpBody body { get; set; } = new OtlpBody();
+    }
+
+    internal sealed class OtlpBody
+    {
+        public string stringValue { get; set; } = string.Empty;
+    }
+
 #if NET6_0_OR_GREATER
     /// <summary>
     /// The System.Text.Json Source Generator Context.
@@ -34,6 +79,7 @@ namespace ChronoStack
     [JsonSerializable(typeof(TimedFrame))]
     [JsonSerializable(typeof(Dictionary<string, string>))]
     [JsonSerializable(typeof(string))]
+    [JsonSerializable(typeof(OtlpLogsPayload))]
     internal partial class ChronoStackJsonContext : JsonSerializerContext
     {
         private static readonly JsonSerializerOptions CompactOptions = new JsonSerializerOptions 

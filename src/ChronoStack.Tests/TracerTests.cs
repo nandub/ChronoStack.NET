@@ -128,11 +128,9 @@ namespace ChronoStack.Tests
             var payload = sink.BuildPayload(TraceSeverity.Error, new ErrorReport { Message = "OTLP" }, new TracerOptions());
 
             // Assert
-#if NET6_0_OR_GREATER
-            Assert.Contains("\"svc\\u0022,\\u0022bad\\u0022:true,\\u0022x\\u0022:\\u0022\"", payload);
-#else
-            Assert.Contains("\"svc\\\",\\\"bad\\\":true,\\\"x\\\":\\\"\"", payload);
-#endif
+            Assert.Contains("service.name", payload);
+            Assert.Contains("svc", payload);
+            Assert.DoesNotContain("\"bad\":true", payload);
         }
 
         [Fact]

@@ -67,6 +67,19 @@ using (var tracer = Tracer.Create(new ITraceSink[] { new ConsoleTraceSink() }, o
 
 The configured `MessageRedactor` is applied before telemetry reaches sinks. It covers exception messages, exception sources, stack file paths, timed scope names, timed frame file paths, and trace tag keys/values. Environment metadata is disabled by default; enable `IncludeEnvironmentInfo` only when host/process details are appropriate for the target log destination.
 
+### Environment Metadata
+
+Host and process metadata can be useful in controlled observability pipelines, but it can expose machine names, process names, process IDs, thread IDs, framework details, memory statistics, and uptime. ChronoStack keeps this disabled by default.
+
+```csharp
+var options = new TracerOptions
+{
+    IncludeEnvironmentInfo = true
+};
+```
+
+Enable it only for sinks and destinations where that operational context is expected.
+
 ### 3. Comprehensive Initialization (All Sinks)
 
 ChronoStack allows you to route identical, Native AOT-serialized telemetry to multiple destinations simultaneously.

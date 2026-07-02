@@ -47,6 +47,7 @@ pack_library:
     - dotnet build ChronoStack.sln --configuration Release --no-restore
     - dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release --no-build
     - pwsh -File ./scripts/Verify-ChronoStackPackage.ps1
+    - pwsh -File ./scripts/Test-ChronoStackPackageInstall.ps1
 
 publish_nuget:
   stage: deploy
@@ -57,6 +58,7 @@ publish_nuget:
     - dotnet build ChronoStack.sln --configuration Release --no-restore
     - dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release --no-build
     - pwsh -File ./scripts/Verify-ChronoStackPackage.ps1
+    - pwsh -File ./scripts/Test-ChronoStackPackageInstall.ps1
     
     # GitLab automatically provides these authentication variables
     - dotnet nuget add source "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/nuget/index.json" -n GitLab -u gitlab-ci-token -p $env:CI_JOB_TOKEN --store-password-in-clear-text
