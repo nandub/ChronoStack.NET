@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Documented the opt-in `IncludeEnvironmentInfo` behavior and the kind of host/process metadata it captures.
 * Added a release checklist for build, package, tag, and artifact verification.
 * Added CI artifacts for generated `.nupkg` and `.snupkg` files.
+* Added GitHub Packages consumer installation documentation.
 
 ### Security
 

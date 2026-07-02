@@ -22,6 +22,8 @@ It solves the classic "lost context" problem in .NET exception handling: when an
 
 ## 🚀 Quick Start
 
+Install packages from GitHub Packages using the guidance in [docs/GITHUB_PACKAGES.md](docs/GITHUB_PACKAGES.md).
+
 ### 1. Basic Initialization & Scopes
 
 Use `RunTimed()` to start a full diagnostic session with a unique `CorrelationId`. Use `tracer.InvokeScope()` to measure specific blocks of code.

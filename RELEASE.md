@@ -35,6 +35,7 @@ git push origin vX.Y.Z
 - Confirm `ChronoStack.X.Y.Z.nupkg` was published to GitHub Packages.
 - Confirm both `ChronoStack.X.Y.Z.nupkg` and `ChronoStack.X.Y.Z.snupkg` are attached as workflow artifacts.
 - Install the package from the published feed in a throwaway consumer project.
+- Confirm [docs/GITHUB_PACKAGES.md](docs/GITHUB_PACKAGES.md) still matches the published feed and package visibility.
 
 ## NuGet.org
 
