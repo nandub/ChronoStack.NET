@@ -2,6 +2,7 @@ using System;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -60,13 +61,18 @@ namespace ChronoStack
      */
     public sealed class SqlDatabaseSink : ITraceSink
     {
+        private static readonly Regex SqlIdentifierPattern = new Regex(
+            @"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$",
+            RegexOptions.Compiled,
+            TimeSpan.FromMilliseconds(250));
+
         private readonly string _connectionString;
         private readonly string _tableName;
 
         public SqlDatabaseSink(string connectionString, string tableName = "ChronoLogs")
         {
             _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
-            _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+            _tableName = QuoteSqlTableName(tableName ?? throw new ArgumentNullException(nameof(tableName)));
         }
 
         public void Write(TraceSeverity severity, object report, TracerOptions options)
@@ -105,6 +111,18 @@ namespace ChronoStack
                     cmd.ExecuteNonQuery();
                 }
             }
+        }
+
+        private static string QuoteSqlTableName(string tableName)
+        {
+            if (!SqlIdentifierPattern.IsMatch(tableName))
+                throw new ArgumentException("Table name must be a simple SQL Server identifier, optionally schema-qualified.", nameof(tableName));
+
+            var parts = tableName.Split('.');
+            for (var i = 0; i < parts.Length; i++)
+                parts[i] = "[" + parts[i].Replace("]", "]]") + "]";
+
+            return string.Join(".", parts);
         }
     }
 
@@ -337,23 +355,34 @@ namespace ChronoStack
         /// <param name="serviceName">The name of the service emitting the telemetry (e.g., "MyWebApp").</param>
         public OtlpHttpLogSink(string endpointUrl, string serviceName)
         {
-            _otlpEndpoint = endpointUrl;
-            _serviceName = serviceName;
+            _otlpEndpoint = endpointUrl ?? throw new ArgumentNullException(nameof(endpointUrl));
+            _serviceName = serviceName ?? throw new ArgumentNullException(nameof(serviceName));
         }
 
         public void Write(TraceSeverity severity, object report, TracerOptions options)
         {
+            var otlpPayload = BuildPayload(severity, report, options);
+
+            var content = new StringContent(otlpPayload, Encoding.UTF8, "application/json");
+
+            // Synchronous call so the CircuitBreaker can catch timeouts!
+            var response = _httpClient.PostAsync(_otlpEndpoint, content).GetAwaiter().GetResult();
+            response.EnsureSuccessStatusCode();
+        }
+
+        internal string BuildPayload(TraceSeverity severity, object report, TracerOptions options)
+        {
             var traceId = report is TraceErrorReport tr ? tr.TraceId : null;
             var jsonBody = JsonSerializerShim.Serialize(report, options.JsonCompact);
 
-            // Construct the official OTLP JSON Log Data Model
-            var otlpPayload = $@"
+            // Construct the official OTLP JSON Log Data Model.
+            return $@"
             {{
               ""resourceLogs"": [
                 {{
                   ""resource"": {{
                     ""attributes"": [
-                      {{ ""key"": ""service.name"", ""value"": {{ ""stringValue"": ""{_serviceName}"" }} }}
+                      {{ ""key"": ""service.name"", ""value"": {{ ""stringValue"": {EscapeJsonString(_serviceName)} }} }}
                     ]
                   }},
                   ""scopeLogs"": [
@@ -362,7 +391,7 @@ namespace ChronoStack
                         {{
                           ""timeUnixNano"": ""{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000000}"",
                           ""severityText"": ""{severity}"",
-                          ""traceId"": ""{(traceId ?? "")}"",
+                          ""traceId"": {EscapeJsonString(traceId ?? "")},
                           ""body"": {{ ""stringValue"": {EscapeJsonString(jsonBody)} }}
                         }}
                       ]
@@ -371,13 +400,7 @@ namespace ChronoStack
                 }}
               ]
             }}";
-
-            var content = new StringContent(otlpPayload, Encoding.UTF8, "application/json");
-            
-            // Synchronous call so the CircuitBreaker can catch timeouts!
-            var response = _httpClient.PostAsync(_otlpEndpoint, content).GetAwaiter().GetResult();
-            response.EnsureSuccessStatusCode();
-        }	
+        }
     
         // Helper to safely escape our ChronoStack JSON so it fits inside the OTLP string value
         private static string EscapeJsonString(string rawJson)

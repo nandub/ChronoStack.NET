@@ -18,7 +18,7 @@ namespace ChronoStack.Driver
             }
 
             var targetExe = args[0];
-            var targetArgs = string.Join(" ", args.Skip(1));
+            var targetArgs = args.Skip(1).ToArray();
             int exitCode = 0;
 
             // 1. Configure OS-Aware Enterprise Sinks
@@ -47,7 +47,7 @@ namespace ChronoStack.Driver
                     // Tag the session so dashboards know exactly what app we are wrapping
                     tracer.AddTag("Driver", "ChronoDriver");
                     tracer.AddTag("TargetExecutable", targetExe);
-                    tracer.AddTag("TargetArguments", targetArgs);
+                    tracer.AddTag("TargetArgumentCount", targetArgs.Length.ToString());
 
                     tracer.InvokeScope("ExternalProcess.Execute", () =>
                     {
@@ -67,17 +67,25 @@ namespace ChronoStack.Driver
             return exitCode;
         }
 
-        private static int RunExternalProcess(string exePath, string arguments)
+        private static int RunExternalProcess(string exePath, IReadOnlyList<string> arguments)
         {
             var startInfo = new ProcessStartInfo
             {
                 FileName = exePath,
-                Arguments = arguments,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true
             };
+
+#if NET6_0_OR_GREATER
+            foreach (var argument in arguments)
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+#else
+            startInfo.Arguments = string.Join(" ", arguments.Select(QuoteArgument));
+#endif
 
             // Pass the Correlation ID down to the child process just in case!
             var currentSessionId = Environment.GetEnvironmentVariable("CHRONOSTACK_CORRELATION_ID");
@@ -88,16 +96,24 @@ namespace ChronoStack.Driver
 
             var outputBuilder = new StringBuilder();
             var errorBuilder = new StringBuilder();
+            var timeout = GetProcessTimeout();
 
             using (var process = new Process { StartInfo = startInfo })
             {
                 // Capture stdout and stderr asynchronously to prevent deadlocks
-                process.OutputDataReceived += (sender, e) => { if (e.Data != null) outputBuilder.AppendLine(e.Data); };
-                process.ErrorDataReceived += (sender, e) => { if (e.Data != null) errorBuilder.AppendLine(e.Data); };
+                process.OutputDataReceived += (sender, e) => { if (e.Data != null) AppendCapped(outputBuilder, e.Data); };
+                process.ErrorDataReceived += (sender, e) => { if (e.Data != null) AppendCapped(errorBuilder, e.Data); };
 
                 process.Start();
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
+
+                var timeoutMilliseconds = timeout.TotalMilliseconds > int.MaxValue ? int.MaxValue : (int)timeout.TotalMilliseconds;
+                if (!process.WaitForExit(timeoutMilliseconds))
+                {
+                    TryKill(process);
+                    throw new TimeoutException($"Process exceeded the configured timeout of {timeout.TotalSeconds:0} seconds.");
+                }
 
                 process.WaitForExit();
 
@@ -120,6 +136,81 @@ namespace ChronoStack.Driver
                 return process.ExitCode;
             }
         }
+
+        private const int MaxCapturedOutputChars = 64 * 1024;
+
+        private static void AppendCapped(StringBuilder builder, string line)
+        {
+            if (builder.Length >= MaxCapturedOutputChars) return;
+
+            var remaining = MaxCapturedOutputChars - builder.Length;
+            if (line.Length > remaining)
+            {
+                builder.Append(line.Substring(0, remaining));
+                return;
+            }
+
+            builder.AppendLine(line);
+        }
+
+        private static TimeSpan GetProcessTimeout()
+        {
+            var configured = Environment.GetEnvironmentVariable("CHRONOSTACK_DRIVER_TIMEOUT_SECONDS");
+            if (int.TryParse(configured, out var seconds) && seconds > 0)
+                return TimeSpan.FromSeconds(seconds);
+
+            return TimeSpan.FromMinutes(30);
+        }
+
+        private static void TryKill(Process process)
+        {
+            try
+            {
+#if NET6_0_OR_GREATER
+                process.Kill(entireProcessTree: true);
+#else
+                process.Kill();
+#endif
+            }
+            catch { }
+        }
+
+#if !NET6_0_OR_GREATER
+        private static string QuoteArgument(string argument)
+        {
+            if (string.IsNullOrEmpty(argument)) return "\"\"";
+            if (argument.IndexOfAny(new[] { ' ', '\t', '\n', '\v', '"' }) < 0) return argument;
+
+            var quoted = new StringBuilder();
+            quoted.Append('"');
+            var backslashes = 0;
+
+            foreach (var c in argument)
+            {
+                if (c == '\\')
+                {
+                    backslashes++;
+                    continue;
+                }
+
+                if (c == '"')
+                {
+                    quoted.Append('\\', backslashes * 2 + 1);
+                    quoted.Append(c);
+                    backslashes = 0;
+                    continue;
+                }
+
+                quoted.Append('\\', backslashes);
+                quoted.Append(c);
+                backslashes = 0;
+            }
+
+            quoted.Append('\\', backslashes * 2);
+            quoted.Append('"');
+            return quoted.ToString();
+        }
+#endif
     }
 
     /// <summary>

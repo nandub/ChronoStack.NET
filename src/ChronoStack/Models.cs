@@ -10,7 +10,7 @@ namespace ChronoStack
     public sealed class TracerOptions
     {
         public bool IncludeExceptionChain { get; set; } = true;
-        public bool IncludeEnvironmentInfo { get; set; } = true;
+        public bool IncludeEnvironmentInfo { get; set; } = false;
         public bool IncludeTimedFrames { get; set; } = true;
         public bool ConsoleWriteToStdErr { get; set; } = false;
         public bool JsonCompact { get; set; } = true;

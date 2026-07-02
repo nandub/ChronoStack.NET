@@ -362,6 +362,7 @@ namespace ChronoStack
             {
                 foreach (var f in frames) er.Stack.Add(StackFrameInfo.FromFrame(f));
             }
+            RedactErrorReport(er, opts);
             return er;
         }
 
@@ -375,16 +376,62 @@ namespace ChronoStack
                 CorrelationId = session.CorrelationId,
                 TraceId = System.Diagnostics.Activity.Current?.Id,
                 Error = baseReport,
-                TimedStack = opts.IncludeTimedFrames ? (session.LastTimedStackSnapshot ?? new List<TimedFrame>()) : new List<TimedFrame>()
+                TimedStack = opts.IncludeTimedFrames ? RedactTimedFrames(session.LastTimedStackSnapshot ?? new List<TimedFrame>(), opts) : new List<TimedFrame>()
             };
 
             // Copy Tags into the report before dispatching
             foreach (var kvp in session.Tags)
             {
-                report.Tags[kvp.Key] = kvp.Value;
+                report.Tags[RedactIfConfigured(kvp.Key, opts)] = RedactIfConfigured(kvp.Value, opts);
             }
 
             return report;
+        }
+
+        private static string RedactIfConfigured(string value, TracerOptions opts)
+        {
+            return opts.MessageRedactor != null ? opts.MessageRedactor(value) : value;
+        }
+
+        private static void RedactErrorReport(ErrorReport report, TracerOptions opts)
+        {
+            if (opts.MessageRedactor == null) return;
+
+            report.Message = RedactIfConfigured(report.Message, opts);
+            report.Source = report.Source == null ? null : RedactIfConfigured(report.Source, opts);
+
+            foreach (var frame in report.Stack)
+            {
+                frame.FilePath = frame.FilePath == null ? null : RedactIfConfigured(frame.FilePath, opts);
+            }
+
+            if (report.ExceptionChain == null) return;
+
+            foreach (var exception in report.ExceptionChain)
+            {
+                exception.Message = RedactIfConfigured(exception.Message, opts);
+                exception.Source = exception.Source == null ? null : RedactIfConfigured(exception.Source, opts);
+            }
+        }
+
+        private static List<TimedFrame> RedactTimedFrames(List<TimedFrame> frames, TracerOptions opts)
+        {
+            if (opts.MessageRedactor == null) return frames;
+
+            var redacted = new List<TimedFrame>(frames.Count);
+            foreach (var frame in frames)
+            {
+                redacted.Add(new TimedFrame
+                {
+                    Name = RedactIfConfigured(frame.Name, opts),
+                    EnterTimeUtc = frame.EnterTimeUtc,
+                    ElapsedMs = frame.ElapsedMs,
+                    AllocatedBytes = frame.AllocatedBytes,
+                    FilePath = frame.FilePath == null ? null : RedactIfConfigured(frame.FilePath, opts),
+                    LineNumber = frame.LineNumber
+                });
+            }
+            return redacted;
         }
 
         private void WriteToSinks(TraceSeverity severity, object report, TracerOptions opts)

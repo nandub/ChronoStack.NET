@@ -57,6 +57,85 @@ namespace ChronoStack.Tests
         }
 
         [Fact]
+        public void TracerOptions_Defaults_DoNotCaptureEnvironmentInfo()
+        {
+            // Arrange
+            var sink = new InMemorySink();
+
+            // Act
+            using (var tracer = Tracer.Create(new[] { sink }))
+            {
+                tracer.Run(() => throw new Exception("No host metadata by default"));
+            }
+
+            // Assert
+            var report = (ErrorReport)sink.CapturedReports.First();
+            Assert.Null(report.Environment);
+        }
+
+        [Fact]
+        public void MessageRedactor_WhenConfigured_AppliesToReportFieldsAndTags()
+        {
+            // Arrange
+            var sink = new InMemorySink();
+            var options = new TracerOptions
+            {
+                MessageRedactor = value => value.Replace("secret", "[redacted]")
+            };
+
+            // Act
+            using (var tracer = Tracer.Create(new[] { sink }, options))
+            {
+                tracer.RunTimed(() =>
+                {
+                    tracer.AddTag("ApiToken", "secret");
+                    using (tracer.Scope("secret scope", @"C:\secret\handler.cs", 42))
+                    {
+                        throw new Exception("secret failure");
+                    }
+                });
+            }
+
+            // Assert
+            var report = (TraceErrorReport)sink.CapturedReports.First();
+            var json = JsonSerializerShim.Serialize(report, compact: true);
+
+            Assert.Contains("[redacted]", json);
+            Assert.DoesNotContain("secret", json);
+        }
+
+        [Fact]
+        public void SqlDatabaseSink_WhenTableNameIsUnsafe_RejectsIdentifier()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                new SqlDatabaseSink("Server=.;Database=Logs;Integrated Security=true;", "ChronoLogs; DROP TABLE Users;--"));
+        }
+
+        [Fact]
+        public void SqlDatabaseSink_WhenTableNameIsSchemaQualified_AllowsSafeIdentifier()
+        {
+            var sink = new SqlDatabaseSink("Server=.;Database=Logs;Integrated Security=true;", "dbo.ChronoLogs");
+            Assert.NotNull(sink);
+        }
+
+        [Fact]
+        public void OtlpHttpLogSink_WhenServiceNameContainsJsonSyntax_EscapesIt()
+        {
+            // Arrange
+            var sink = new OtlpHttpLogSink("http://127.0.0.1:4318/v1/logs", "svc\",\"bad\":true,\"x\":\"");
+
+            // Act
+            var payload = sink.BuildPayload(TraceSeverity.Error, new ErrorReport { Message = "OTLP" }, new TracerOptions());
+
+            // Assert
+#if NET6_0_OR_GREATER
+            Assert.Contains("\"svc\\u0022,\\u0022bad\\u0022:true,\\u0022x\\u0022:\\u0022\"", payload);
+#else
+            Assert.Contains("\"svc\\\",\\\"bad\\\":true,\\\"x\\\":\\\"\"", payload);
+#endif
+        }
+
+        [Fact]
         public void CircuitBreaker_TripsAndDropsLogs_AfterThresholdReached()
         {
             // Arrange

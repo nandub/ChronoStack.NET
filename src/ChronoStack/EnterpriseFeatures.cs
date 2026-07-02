@@ -9,6 +9,7 @@ namespace ChronoStack
     /// </summary>
     public sealed class RedactionPolicy
     {
+        private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(250);
         private readonly List<(Regex Pattern, string Replacement)> _rules = new List<(Regex, string)>();
 
         /// <summary>
@@ -17,7 +18,7 @@ namespace ChronoStack
         public RedactionPolicy AddRule(string regexPattern, string replacementText)
         {
             // Compiled for high performance on the hot path
-            _rules.Add((new Regex(regexPattern, RegexOptions.Compiled), replacementText));
+            _rules.Add((new Regex(regexPattern, RegexOptions.Compiled, RegexTimeout), replacementText));
             return this;
         }
 

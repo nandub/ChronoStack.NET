@@ -8,7 +8,7 @@ It solves the classic "lost context" problem in .NET exception handling: when an
 
 * **Native AOT & Trimming Compatible:** 100% reflection-free JSON serialization using `System.Text.Json` C# Source Generators. Lightning fast and ready for modern .NET 8+ microservices.
 * **Throw-Time Context Preservation:** Captures nested scopes, exact execution timings, and memory allocations before the stack unwinds.
-* **Live Host Metrics:** Automatically captures Process Working Set (RAM), Active Threads, and Uptime at the exact millisecond of the crash.
+* **Live Host Metrics:** Optionally captures Process Working Set (RAM), Active Threads, and Uptime at the exact millisecond of the crash.
 * **Zero-Blocking Background Dispatch:** Application threads drop logs into an in-memory channel (`0.001ms`) and instantly resume. A dedicated background thread handles the disk/network I/O, providing **Log Storm Protection**.
 * **Thread-Safe & Async-Ready:** Uses `AsyncLocal` to guarantee strict isolation of Correlation IDs and scopes across concurrent web requests or `Task.Run` pipelines.
 * **Cross-Platform Unification:** Seamlessly adopt Correlation IDs from parent PowerShell scripts via the `CHRONOSTACK_CORRELATION_ID` environment variable.
@@ -215,12 +215,24 @@ app.UseMiddleware<MyCompany.WebApp.Middlewares.ChronoStackMiddleware>();
 
 ---
 
-## 📊 Dashboard Observability (Splunk, ELK, Datadog)
+## 📊 Dashboard Observability (NXLog, Splunk, ELK, Datadog)
 
-Because `JsonlTraceSink` and `HttpTelemetrySink` output dense **JSON Lines (JSONL)**, enterprise dashboards parse 100% of ChronoStack telemetry automatically. Every error report also includes Live Metrics (`ProcessRamBytes`, `ActiveProcessThreads`) captured at the exact moment of failure.
+Because `JsonlTraceSink` and `HttpTelemetrySink` output dense **JSON Lines (JSONL)**, enterprise dashboards parse 100% of ChronoStack telemetry automatically. When `IncludeEnvironmentInfo` is enabled, error reports also include Live Metrics (`ProcessRamBytes`, `ActiveProcessThreads`) captured at the exact moment of failure.
 
 ### 🔵 OpenTelemetry (OTLP)
 Point the `OtlpHttpLogSink` to any standard OTel Collector (Jaeger, Prometheus, Datadog Agent) to natively ingest standard `/v1/logs` payloads.
+
+### 🟤 NXLog Agent Shipping
+For production log forwarding, write ChronoStack events locally with `JsonlTraceSink` and let NXLog tail and forward the file. This keeps retry, buffering, TLS, and SIEM routing outside your application process.
+
+```csharp
+using var tracer = Tracer.Create(new ITraceSink[]
+{
+    new JsonlTraceSink(@"C:\logs\chronostack\chronostack.jsonl")
+});
+```
+
+See [docs/NXLOG.md](docs/NXLOG.md) for Windows and Linux NXLog examples.
 
 ### 🟢 Splunk Integration
 Point a Splunk Universal Forwarder at your output directory using this `inputs.conf`:
