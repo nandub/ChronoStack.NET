@@ -13,10 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Added a consumer install smoke test that validates the packed NuGet package from a temporary `net8.0` application.
 * Documented the opt-in `IncludeEnvironmentInfo` behavior and the kind of host/process metadata it captures.
+* Added a release checklist for build, package, tag, and artifact verification.
+* Added CI artifacts for generated `.nupkg` and `.snupkg` files.
 
 ### Security
 
 * Replaced hand-built OTLP JSON payload construction with typed serialization.
+* Added HTTP endpoint validation for direct telemetry sinks; remote endpoints require HTTPS unless insecure HTTP is explicitly enabled.
 
 ## [1.2.0] - 2026-07-02
 

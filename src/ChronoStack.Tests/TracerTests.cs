@@ -134,6 +134,26 @@ namespace ChronoStack.Tests
         }
 
         [Fact]
+        public void HttpTelemetrySink_WhenEndpointIsInsecureRemote_RejectsByDefault()
+        {
+            Assert.Throws<ArgumentException>(() => new HttpTelemetrySink("http://example.com/logs"));
+        }
+
+        [Fact]
+        public void HttpTelemetrySink_WhenEndpointIsLoopbackHttp_AllowsForLocalCollectors()
+        {
+            var sink = new HttpTelemetrySink("http://localhost:9999/logs");
+            Assert.NotNull(sink);
+        }
+
+        [Fact]
+        public void OtlpHttpLogSink_WhenEndpointIsHttps_AllowsRemoteCollector()
+        {
+            var sink = new OtlpHttpLogSink("https://otel.example.com/v1/logs", "ChronoStack.Tests");
+            Assert.NotNull(sink);
+        }
+
+        [Fact]
         public void CircuitBreaker_TripsAndDropsLogs_AfterThresholdReached()
         {
             // Arrange

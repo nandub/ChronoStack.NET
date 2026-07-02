@@ -48,6 +48,12 @@ pack_library:
     - dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release --no-build
     - pwsh -File ./scripts/Verify-ChronoStackPackage.ps1
     - pwsh -File ./scripts/Test-ChronoStackPackageInstall.ps1
+  artifacts:
+    name: chronostack-nuget
+    paths:
+      - src/ChronoStack/bin/Release/*.nupkg
+      - src/ChronoStack/bin/Release/*.snupkg
+    expire_in: 30 days
 
 publish_nuget:
   stage: deploy

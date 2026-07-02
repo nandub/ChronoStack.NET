@@ -237,6 +237,8 @@ Because `JsonlTraceSink` and `HttpTelemetrySink` output dense **JSON Lines (JSON
 ### 🔵 OpenTelemetry (OTLP)
 Point the `OtlpHttpLogSink` to any standard OTel Collector (Jaeger, Prometheus, Datadog Agent) to natively ingest standard `/v1/logs` payloads.
 
+Remote telemetry endpoints must use HTTPS by default. Plain HTTP is allowed for loopback collectors such as `http://localhost:4318/v1/logs`; for a trusted non-loopback HTTP endpoint, pass `allowInsecureHttp: true` explicitly.
+
 ### 🟤 NXLog Agent Shipping
 For production log forwarding, write ChronoStack events locally with `JsonlTraceSink` and let NXLog tail and forward the file. This keeps retry, buffering, TLS, and SIEM routing outside your application process.
 

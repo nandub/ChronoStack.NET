@@ -24,9 +24,9 @@ namespace ChronoStack
         private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
         private readonly string _endpointUrl;
 
-        public HttpTelemetrySink(string endpointUrl)
+        public HttpTelemetrySink(string endpointUrl, bool allowInsecureHttp = false)
         {
-            _endpointUrl = endpointUrl ?? throw new ArgumentNullException(nameof(endpointUrl));
+            _endpointUrl = HttpEndpointValidator.Validate(endpointUrl, allowInsecureHttp, nameof(endpointUrl)).ToString();
         }
 
         public void Write(TraceSeverity severity, object report, TracerOptions options)
@@ -354,9 +354,10 @@ namespace ChronoStack
 
         /// <param name="endpointUrl">e.g., http://localhost:4318/v1/logs</param>
         /// <param name="serviceName">The name of the service emitting the telemetry (e.g., "MyWebApp").</param>
-        public OtlpHttpLogSink(string endpointUrl, string serviceName)
+        /// <param name="allowInsecureHttp">Allows non-loopback HTTP endpoints. HTTPS and loopback HTTP are always allowed.</param>
+        public OtlpHttpLogSink(string endpointUrl, string serviceName, bool allowInsecureHttp = false)
         {
-            _otlpEndpoint = endpointUrl ?? throw new ArgumentNullException(nameof(endpointUrl));
+            _otlpEndpoint = HttpEndpointValidator.Validate(endpointUrl, allowInsecureHttp, nameof(endpointUrl)).ToString();
             _serviceName = serviceName ?? throw new ArgumentNullException(nameof(serviceName));
         }
 
@@ -477,6 +478,30 @@ namespace ChronoStack
         public void Dispose()
         {
             _udpClient?.Dispose();
+        }
+    }
+
+    internal static class HttpEndpointValidator
+    {
+        public static Uri Validate(string endpointUrl, bool allowInsecureHttp, string parameterName)
+        {
+            if (endpointUrl == null) throw new ArgumentNullException(parameterName);
+
+            if (!Uri.TryCreate(endpointUrl, UriKind.Absolute, out var uri))
+                throw new ArgumentException("Endpoint URL must be an absolute HTTP or HTTPS URI.", parameterName);
+
+            if (uri.Scheme == Uri.UriSchemeHttps)
+                return uri;
+
+            if (uri.Scheme == Uri.UriSchemeHttp)
+            {
+                if (allowInsecureHttp || uri.IsLoopback)
+                    return uri;
+
+                throw new ArgumentException("HTTP endpoints are only allowed for loopback URLs unless allowInsecureHttp is enabled.", parameterName);
+            }
+
+            throw new ArgumentException("Endpoint URL must use HTTP or HTTPS.", parameterName);
         }
     }
 }

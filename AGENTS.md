@@ -10,6 +10,7 @@ Guidance for AI agents working in this repository.
 - Demo app: `src/ChronoStack.Demo`
 - Tests: `src/ChronoStack.Tests`
 - NXLog shipping guide: `docs/NXLOG.md`
+- Release checklist: `RELEASE.md`
 - Supported target frameworks include .NET Framework and modern .NET. Keep changes compatible with `net48`, `net481`, `net6.0`, and `net8.0` unless the user explicitly changes support.
 
 ## Security Conventions
