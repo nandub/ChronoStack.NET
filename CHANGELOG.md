@@ -7,15 +7,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-07-02
 
 ### Added
 
 * Added repository-level `NuGet.config` so restore behavior is deterministic on machines without preconfigured package sources.
 * Added `AGENTS.md` guidance for future AI/code agents working in the repository.
 * Added NXLog documentation for shipping `JsonlTraceSink` output through an external log agent.
+* Added reusable NXLog Windows and Linux example configuration files under `examples/nxlog`.
 * Added CI package vulnerability auditing with `dotnet list package --vulnerable --include-transitive`.
 * Updated test infrastructure package references to current stable versions to remove vulnerable transitive test dependencies.
+* Added NuGet package verification for expected assemblies, XML documentation, README, license, repository metadata, and symbol packages.
+* Added SourceLink, repository metadata, deterministic build settings, and symbol package generation for NuGet packages.
 
 ### Changed
 

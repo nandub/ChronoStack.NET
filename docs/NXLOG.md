@@ -25,6 +25,8 @@ using var tracer = Tracer.Create(
 
 This example tails ChronoStack JSONL and forwards each line over TCP. Adjust the output module for your destination, such as `om_ssl`, `om_http`, `om_udp`, or a vendor-specific NXLog module available in your edition.
 
+The same configuration is available as `examples/nxlog/chronostack-windows.conf`.
+
 ```apache
 define ROOT C:\Program Files\nxlog
 define CHRONOSTACK_LOG C:\logs\chronostack\chronostack.jsonl
@@ -63,6 +65,8 @@ LogFile   %ROOT%\data\nxlog.log
 ```
 
 ## Linux NXLog CE Example
+
+The same configuration is available as `examples/nxlog/chronostack-linux.conf`.
 
 ```apache
 define CHRONOSTACK_LOG /var/log/chronostack/chronostack.jsonl

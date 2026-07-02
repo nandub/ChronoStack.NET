@@ -43,6 +43,9 @@ jobs:
       # MinVer will automatically intercept this and name it ChronoStack.1.0.0.nupkg!
       run: dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release --no-build
 
+    - name: Verify NuGet Package
+      run: pwsh -File ./scripts/Verify-ChronoStackPackage.ps1
+
     - name: Publish to GitHub Packages
       if: startsWith(github.ref, 'refs/tags/v')
       run: |

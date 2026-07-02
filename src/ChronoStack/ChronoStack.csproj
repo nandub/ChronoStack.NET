@@ -8,6 +8,14 @@
     <NoWarn>$(NoWarn);1591</NoWarn>
     <AssemblyName>ChronoStack</AssemblyName>
     <RootNamespace>ChronoStack</RootNamespace>
+    <RepositoryUrl>https://github.com/nandub/ChronoStack.NET</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <Deterministic>true</Deterministic>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
     <!-- Silences the warnings about using v10.x NuGet packages on net6.0 -->
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
@@ -24,6 +32,8 @@
     <PackageTags>logging;telemetry;diagnostics;opentelemetry;exceptions;aot</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/nandub/ChronoStack.NET</PackageProjectUrl>
+    <PackageReleaseNotes>See CHANGELOG.md for release notes.</PackageReleaseNotes>
     <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
 
@@ -51,6 +61,10 @@
     </PackageReference>
     <PackageReference Include="NLog" Version="6.1.2" />
     <PackageReference Include="Serilog" Version="4.3.1" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
