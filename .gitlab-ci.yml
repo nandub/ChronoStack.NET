@@ -1,6 +1,9 @@
 stages:
+  - restore
+  - audit
   - build
   - test
+  - package
   - deploy
 
 default:
@@ -11,8 +14,18 @@ variables:
   DOTNET_NOLOGO: "true"
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   
-  # THE FIX: Tells GitLab to fetch all tags and history so MinVer works!
-  GIT_DEPTH: "0" 
+  # Tells GitLab to fetch all tags and history so MinVer works.
+  GIT_DEPTH: "0"
+
+restore_solution:
+  stage: restore
+  script:
+    - dotnet restore ChronoStack.sln
+
+audit_packages:
+  stage: audit
+  script:
+    - dotnet list ChronoStack.sln package --vulnerable --include-transitive
 
 build_solution:
   stage: build
@@ -23,14 +36,24 @@ build_solution:
 run_tests:
   stage: test
   script:
-    - dotnet test src/ChronoStack.Tests/ChronoStack.Tests.csproj --configuration Release --no-build
+    - dotnet restore ChronoStack.sln
+    - dotnet test ChronoStack.sln --configuration Release --no-restore
+
+pack_library:
+  stage: package
+  script:
+    # MinVer automatically detects the tag and names the package perfectly
+    - dotnet restore ChronoStack.sln
+    - dotnet build ChronoStack.sln --configuration Release --no-restore
+    - dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release --no-build
 
 publish_nuget:
   stage: deploy
   only:
     - tags # Only run the publish step when a Git Tag (e.g., v1.0.0) is pushed
   script:
-    # MinVer automatically detects the tag and names the package perfectly
+    - dotnet restore ChronoStack.sln
+    - dotnet build ChronoStack.sln --configuration Release --no-restore
     - dotnet pack src/ChronoStack/ChronoStack.csproj --configuration Release --no-build
     
     # GitLab automatically provides these authentication variables

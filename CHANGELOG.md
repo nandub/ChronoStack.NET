@@ -7,6 +7,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+* Added repository-level `NuGet.config` so restore behavior is deterministic on machines without preconfigured package sources.
+* Added `AGENTS.md` guidance for future AI/code agents working in the repository.
+* Added NXLog documentation for shipping `JsonlTraceSink` output through an external log agent.
+* Added CI package vulnerability auditing with `dotnet list package --vulnerable --include-transitive`.
+* Updated test infrastructure package references to current stable versions to remove vulnerable transitive test dependencies.
+
+### Changed
+
+* `IncludeEnvironmentInfo` now defaults to `false` so host and process metadata are opt-in.
+* Expanded redaction to cover exception messages, sources, stack file paths, timed scope names, timed frame paths, and trace tags.
+* Hardened `ChronoStack.Driver` process execution by preserving argument boundaries, capping captured output, adding a configurable timeout, and avoiding raw argument logging.
+
+### Security
+
+* Validated and quoted `SqlDatabaseSink` table identifiers to prevent SQL identifier injection.
+* Escaped OTLP string fields before embedding them in JSON payloads.
+* Added regex match timeouts to redaction rules to reduce catastrophic-backtracking risk.
+
 ## [1.0.0] - 2026-04-23
 
 ### Added
@@ -30,4 +52,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **Observability:** Added memory allocation tracking (`GC.GetAllocatedBytesForCurrentThread`) and W3C Trace Context (OpenTelemetry) extraction.
 * **Cross-Platform:** Implemented PowerShell Unification via the `CHRONOSTACK_CORRELATION_ID` environment variable.
 * **Testing:** Provided `InMemorySink` for unit testing downstream applications.
-
